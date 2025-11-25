@@ -9,6 +9,9 @@ An interactive visualization of the Goldbach Topographical Calculator plus links
   - YouTube Ep1: https://www.youtube.com/watch?v=9cLTkTKSSI0
   - Null‑test artifacts (10.1 GB, Google Drive):
     https://drive.google.com/drive/folders/1BSsH8OgPti4aLu47YO4whu6RM_6XAOme
+ To download full null‑test artifacts:
+  - python scripts/download_artifacts.py
+
 
 ## What this repo contains
 - calculator/GoldbachCalculator.html – main interactive HTML/JS calculator
