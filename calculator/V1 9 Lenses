@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goldbach Topological Calculator v8.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrollbars from interfering with 3D view */
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom scrollbar for info panel */
+        .info-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        .info-panel::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        .info-panel::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        .info-panel::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-content {
+            background-color: #2d3748;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            color: #e2e8f0;
+            max-width: 500px;
+            text-align: center;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-backdrop.active .modal-content {
+            transform: scale(1);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div id="main-container" class="flex h-screen w-screen">
+        
+        <!-- Controls Panel -->
+        <div class="w-full sm:w-96 bg-gray-800 p-4 shadow-lg flex flex-col z-10">
+            <h1 class="text-2xl font-bold text-cyan-400">Goldbach Topological Calculator</h1>
+            <p class="text-sm text-gray-400 mb-4">An Axiom Institute Research Instrument v8.7</p>
+
+            <div class="flex-grow overflow-y-auto pr-2">
+                <!-- Range Controls -->
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold mb-2">Number Range</h2>
+                    <div class="flex space-x-2">
+                        <div>
+                            <label for="min-range" class="text-sm">Min (Even)</label>
+                            <input type="number" id="min-range" value="4" step="2" class="w-full bg-gray-700 rounded p-2 text-white">
+                        </div>
+                        <div>
+                            <label for="max-range" class="text-sm">Max</label>
+                            <input type="number" id="max-range" value="1000" step="2" class="w-full bg-gray-700 rounded p-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Z-Axis Model Controls -->
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold mb-2">Z-Axis Model (The Lenses)</h2>
+                    <div id="z-axis-controls" class="flex flex-col space-y-2">
+                        <div data-title="The 'Gap' (Distance)" data-description="Measures the simple distance between the two primes (P₂ - P₁). This reveals the basic, underlying linear structure of the partition space.">
+                            <button data-model="gap" class="model-btn w-full text-left bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Gap' (Distance)</button>
+                        </div>
+                        <div data-title="The 'Informational' (e) Lens" data-description="Measures the Shannon information (ln(P₁) + ln(P₂)), based on Euler's number, e. This is a proxy for the informational complexity or 'work' required to form the partition.">
+                           <button data-model="entropy" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Informational' (e)</button>
+                        </div>
+                        <div data-title="The 'Curvature' (Gravity) Lens" data-description="Measures geometric influence (P₁ * P₂). This unexpectedly provides a direct mathematical analog for the curvature of a gravity well.">
+                           <button data-model="curvature" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Curvature' (Gravity)</button>
+                        </div>
+                        <div data-title="The 'Equilibrium' (Golden Ratio / Strong Force) Lens" data-description="Measures the balance of a partition (P₁ / P₂). A ratio close to 1 represents a perfectly balanced, stable partition. This is an analog for the Strong Nuclear Force.">
+                           <button data-model="equilibrium" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Equilibrium' (Golden Ratio / Strong Force)</button>
+                        </div>
+                        <div data-title="The 'Asymmetry' (Weak Force) Lens" data-description="Measures a partition's potential for transformation and decay (P₂² - P₁²). It is an analog for the Weak Nuclear Force.">
+                           <button data-model="asymmetry" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Asymmetry' (Weak Force)</button>
+                        </div>
+                         <div data-title="The 'Relativistic' (c) Lens" data-description="Measures the 'energy density' of a partition (P₁ * P₂ / N). This is a probe for the mathematical analog of spacetime dynamics and relativity.">
+                           <button data-model="relativistic" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Relativistic' (c)</button>
+                        </div>
+                        <div data-title="The 'Resonance' (EM Force) Lens" data-description="Models the primes as frequencies (sin(P₁) * cos(P₂)) to find harmonic structures, analogous to the Electromagnetic Force.">
+                           <button data-model="resonance" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The 'Resonance' (EM Force)</button>
+                        </div>
+                        <div data-title="The Fine-Structure (α) Lens" data-description="Probes for the fine-structure constant (α ≈ 1/137) with fixed-scale rendering. This lens reveals the 'collapsed' classical state of the EM-analog force.">
+                           <button data-model="alpha" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The Fine-Structure (α)</button>
+                        </div>
+                        <div data-title="The Universal Constant (π) Lens" data-description="Tests the relationship between prime partitions and the constant Pi, revealing the quantized, 'classical backplane' of the number field.">
+                           <button data-model="pi" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">The Universal Constant (π)</button>
+                        </div>
+                         <div data-title="Unified Field" data-description="Visualizes all six primary structural and dynamic forces plus the quantized Pi Plane (White) to see the ultimate structure of reality.">
+                           <button data-model="unified" class="model-btn w-full text-left bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">Unified Field</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="generate-btn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded transition-colors duration-200">
+                    Generate Visualization
+                </button>
+                <div id="loading-indicator" class="hidden flex items-center justify-center mt-4">
+                    <div class="loader"></div>
+                    <span class="ml-2">Calculating...</span>
+                </div>
+
+                <!-- Info Panel -->
+                <div id="info-panel-container" class="mt-4 bg-gray-900 p-3 rounded h-64 hidden">
+                     <h2 id="info-panel-title" class="text-lg font-semibold mb-2 border-b border-gray-700 pb-1">Lens Details</h2>
+                     <div id="info-panel" class="info-panel text-sm text-gray-300 h-full overflow-y-auto">
+                        <!-- Content will be dynamically inserted here -->
+                     </div>
+                </div>
+            </div>
+            
+            <div class="text-xs text-gray-500 mt-2 text-center">
+                Use mouse to rotate (left-click), pan (right-click), and zoom (scroll).
+            </div>
+        </div>
+
+        <!-- 3D Visualization Canvas -->
+        <div id="canvas-container" class="flex-grow h-full relative">
+            <canvas id="bg-canvas"></canvas>
+        </div>
+
+    </div>
+
+    <!-- Modal for notifications -->
+    <div id="notification-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <p id="notification-message"></p>
+            <button id="notification-close" class="mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded">Close</button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // --- Basic Setup ---
+        const canvas = document.getElementById('bg-canvas');
+        const container = document.getElementById('canvas-container');
+        const generateBtn = document.getElementById('generate-btn');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const infoPanelContainer = document.getElementById('info-panel-container');
+        const infoPanelTitle = document.getElementById('info-panel-title');
+        const infoPanel = document.getElementById('info-panel');
+        const modal = document.getElementById('notification-modal');
+        const modalMessage = document.getElementById('notification-message');
+        const modalClose = document.getElementById('notification-close');
+
+        let scene, camera, renderer, controls, points, raycaster, mouse;
+        let currentModel = 'gap';
+        let primes = [];
+        let maxPrime = 0;
+        let rawPartitionData = [];
+        let displayData = [];
+        const FINE_STRUCTURE_CONSTANT = 137.036;
+        
+        const lensDetails = {};
+        document.querySelectorAll('#z-axis-controls > div').forEach(div => {
+            const button = div.querySelector('button');
+            if(button) {
+                const model = button.dataset.model;
+                lensDetails[model] = {
+                    title: div.dataset.title,
+                    description: div.dataset.description
+                };
+            }
+        });
+
+        function showNotification(message) {
+            modalMessage.textContent = message;
+            modal.classList.add('active');
+        }
+        modalClose.addEventListener('click', () => modal.classList.remove('active'));
+
+        function updateLensDetails() {
+            if (!infoPanel) return;
+            const detail = lensDetails[currentModel];
+            if (detail) {
+                infoPanelTitle.textContent = 'Lens Details';
+                infoPanel.innerHTML = `
+                    <p class="font-bold text-cyan-400">${detail.title}</p>
+                    <p class="mt-2 text-gray-400">${detail.description}</p>
+                `;
+            }
+        }
+        
+        // --- Core Logic ---
+        function sieve(limit) {
+            if (limit <= maxPrime) return;
+            maxPrime = limit;
+            const isPrime = new Array(limit + 1).fill(true);
+            isPrime[0] = isPrime[1] = false;
+            for (let p = 2; p * p <= limit; p++) {
+                if (isPrime[p]) {
+                    for (let i = p * p; i <= limit; i += p)
+                        isPrime[i] = false;
+                }
+            }
+            primes = [];
+            for (let i = 2; i <= limit; i++) {
+                if (isPrime[i]) {
+                    primes.push(i);
+                }
+            }
+        }
+        function findPartitions(n) {
+            const partitions = [];
+            const primeSet = new Set(primes);
+            for (const p1 of primes) {
+                if (p1 > n / 2) break;
+                const p2 = n - p1;
+                if (primeSet.has(p2)) {
+                    partitions.push([p1, p2]);
+                }
+            }
+            return partitions;
+        }
+        
+        function generateData() {
+            loadingIndicator.classList.remove('hidden');
+            generateBtn.disabled = true;
+
+            setTimeout(() => {
+                const min = parseInt(document.getElementById('min-range').value);
+                const max = parseInt(document.getElementById('max-range').value);
+                
+                if (min % 2 !== 0 || min < 4) {
+                    showNotification("Minimum range must be an even number greater than or equal to 4.");
+                    resetLoading();
+                    return;
+                }
+                if (max > 50000) {
+                     showNotification("Maximum range should be kept below 50,000 for performance reasons.");
+                     resetLoading();
+                     return;
+                }
+
+                sieve(max);
+                rawPartitionData = [];
+                for (let n = min; n <= max; n += 2) {
+                    const partitions = findPartitions(n);
+                    if (partitions) {
+                        partitions.forEach(([p1, p2]) => {
+                            rawPartitionData.push({ N: n, p1, p2 });
+                        });
+                    }
+                }
+                
+                updateScene();
+                infoPanelContainer.classList.remove('hidden');
+                updateLensDetails();
+                resetLoading();
+            }, 10);
+        }
+
+        function resetLoading() {
+            loadingIndicator.classList.add('hidden');
+            generateBtn.disabled = false;
+        }
+        
+        function init() {
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 50000);
+            camera.position.z = 1500;
+            camera.position.y = 500;
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            raycaster.params.Points.threshold = 10;
+
+            const axesHelper = new THREE.AxesHelper(1000);
+            scene.add(axesHelper);
+
+            window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener('mousemove', onMouseMove, false);
+
+            animate();
+            generateData();
+        }
+
+        const calculateAllValues = (p) => ({
+            gap: p.p2 - p.p1,
+            entropy: Math.log(p.p1) + Math.log(p.p2),
+            curvature: p.p1 * p.p2,
+            equilibrium: p.p1 / p.p2,
+            asymmetry: (p.p2**2) - (p.p1**2),
+            relativistic: (p.p1 * p.p2) / p.N,
+            resonance: Math.sin(p.p1) * Math.cos(p.p2),
+            alpha: (Math.sin(p.p1) * Math.cos(p.p2)) / FINE_STRUCTURE_CONSTANT,
+            pi: Math.cos(p.p1 * Math.PI) + Math.sin(p.p2 * Math.PI)
+        });
+
+        // *** RESTORED AND REFACTORED updateScene() FUNCTION ***
+        function updateScene() {
+            if (points) {
+                scene.remove(points);
+                points.geometry.dispose();
+                points.material.dispose();
+            }
+
+            if (rawPartitionData.length === 0) return;
+
+            displayData = [];
+            const positions = [];
+            const colors = [];
+            const color = new THREE.Color();
+            
+            let minX = Infinity, maxX = -Infinity;
+            rawPartitionData.forEach(p => {
+                if (p.N < minX) minX = p.N;
+                if (p.N > maxX) maxX = p.N;
+            });
+            const scaleX = 2000 / (maxX - minX || 1);
+            const scaleY = 1.0 / 5.0;
+
+            // --- Single unified logic path ---
+            const modelsToProcess = [];
+            const isComposite = ['all', 'wave', 'unified', 'nuclear', 'fundamental', 'alpha-pi'].includes(currentModel);
+
+            if (isComposite) {
+                 switch(currentModel) {
+                    case 'all': modelsToProcess.push({ name: 'gap', color: 0x00ff00 }, { name: 'entropy', color: 0xff00ff }, { name: 'curvature', color: 0xffff00 }, { name: 'equilibrium', color: 0x00ffff }, { name: 'asymmetry', color: 0x800080}); break;
+                    case 'wave': modelsToProcess.push({ name: 'resonance', color: 0xff0000 }, { name: 'pi', color: 0x0000ff }); break;
+                    case 'unified': modelsToProcess.push({ name: 'gap', color: 0x00ff00 }, { name: 'entropy', color: 0xff00ff }, { name: 'curvature', color: 0xffff00 }, { name: 'equilibrium', color: 0x00ffff }, { name: 'asymmetry', color: 0x800080 }, { name: 'relativistic', color: 0xffa500 }, { name: 'pi', color: 0xffffff }); break;
+                    case 'nuclear': modelsToProcess.push({ name: 'equilibrium', color: 0x00ffff }, { name: 'asymmetry', color: 0x800080 }); break;
+                    case 'fundamental': modelsToProcess.push({ name: 'curvature', color: 0xffff00 }, { name: 'equilibrium', color: 0x00ffff }, { name: 'asymmetry', color: 0x800080 }); break;
+                    case 'alpha-pi': modelsToProcess.push({ name: 'alpha', color: 0xffa500 }, { name: 'pi', color: 0xffffff }); break;
+                }
+            } else {
+                modelsToProcess.push({ name: currentModel, color: null }); // Color not needed for single lens hue
+            }
+            
+            const modelBounds = {};
+            modelsToProcess.forEach(m => modelBounds[m.name] = { min: Infinity, max: -Infinity });
+            if (modelsToProcess.some(m => m.name === 'alpha')) {
+                modelBounds['resonance'] = { min: Infinity, max: -Infinity };
+            }
+
+            const allPartitionsValues = rawPartitionData.map(p => ({ partition: p, values: calculateAllValues(p) }));
+            
+            allPartitionsValues.forEach(item => {
+                const { values } = item;
+                if (modelBounds['resonance']) {
+                     if (values.resonance < modelBounds.resonance.min) modelBounds.resonance.min = values.resonance;
+                     if (values.resonance > modelBounds.resonance.max) modelBounds.resonance.max = values.resonance;
+                }
+                modelsToProcess.forEach(m => {
+                    const value = values[m.name];
+                    if (value < modelBounds[m.name].min) modelBounds[m.name].min = value;
+                    if (value > modelBounds[m.name].max) modelBounds[m.name].max = value;
+                });
+            });
+
+            allPartitionsValues.forEach(item => {
+                const { partition, values } = item;
+                modelsToProcess.forEach(m => {
+                    const value = values[m.name];
+                    let bounds = modelBounds[m.name];
+                    if (m.name === 'alpha') {
+                        bounds = modelBounds['resonance'];
+                    }
+                    
+                    const normalizedZ = ((value - bounds.min) / (bounds.max - bounds.min || 1)) * 1000;
+                    
+                    displayData.push({ ...partition, z: value, model: m.name });
+                    positions.push((partition.N - minX) * scaleX - 1000, partition.p1 * scaleY, normalizedZ);
+                    
+                    if (isComposite) {
+                        color.set(m.color);
+                    } else {
+                        const hue = THREE.MathUtils.mapLinear(value, bounds.min, bounds.max, 0.7, 0.0);
+                        color.setHSL(hue, 1.0, 0.5);
+                    }
+                    colors.push(color.r, color.g, color.b);
+                });
+            });
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({ size: 3, vertexColors: true, sizeAttenuation: true });
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+            
+            const boundingBox = new THREE.Box3().setFromObject(points);
+            const center = new THREE.Vector3();
+            boundingBox.getCenter(center);
+            controls.target.copy(center);
+            const size = boundingBox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 * Math.tan(fov * 2));
+            camera.position.z = center.z + Math.max(cameraZ * 1.5, 1000);
+            controls.update();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            if(!camera || !renderer) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        function onMouseMove(event) {
+            if(!renderer || !camera || !points) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(points);
+
+            if (intersects.length > 0) {
+                const index = intersects[0].index;
+                const data = displayData[index];
+                
+                if (data) {
+                    infoPanelTitle.textContent = 'Partition Details';
+                    const zLabel = data.model.charAt(0).toUpperCase() + data.model.slice(1);
+                    infoPanel.innerHTML = `
+                        <p><span class="font-semibold text-cyan-400">Model:</span> ${zLabel}</p>
+                        <p><span class="font-semibold text-cyan-400">Even Number (N):</span> ${data.N}</p>
+                        <p><span class="font-semibold text-cyan-400">Partition:</span> ${data.p1} + ${data.p2}</p>
+                        <p><span class="font-semibold text-cyan-400">${zLabel} (Z-raw):</span> ${data.z.toPrecision(4)}</p>
+                    `;
+                }
+            } else {
+                 updateLensDetails();
+            }
+        }
+
+        generateBtn.addEventListener('click', generateData);
+        
+        document.querySelectorAll('.model-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                currentModel = e.target.dataset.model;
+                document.querySelectorAll('.model-btn').forEach(btn => {
+                    btn.classList.remove('bg-cyan-600', 'hover:bg-cyan-500');
+                    btn.classList.add('bg-gray-600', 'hover:bg-gray-500');
+                });
+                e.target.classList.add('bg-cyan-600', 'hover:bg-cyan-500');
+                e.target.classList.remove('bg-gray-600', 'hover:bg-gray-500');
+                
+                if (rawPartitionData.length > 0) {
+                    updateScene();
+                }
+                updateLensDetails();
+            });
+        });
+
+        init();
+
+    </script>
+</body>
+</html>
+
